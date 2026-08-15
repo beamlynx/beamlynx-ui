@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, useTheme, useMediaQuery, Link, Tooltip } from '@mui/material';
+import { Box, Grid, Typography, useTheme, useMediaQuery, Link } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import { runInAction } from 'mobx';
 import { useStores } from '../store/store-container';
@@ -295,23 +295,6 @@ const AppView = observer(() => {
                 [{global.version ?? 'obsolete'}]
               </Typography>
             )}
-            {/* Unconditional (unlike the version tag above) - desktop is the
-                primary way people actually get this app now (see AGENTS.md),
-                and it hides that tag entirely, so gating this the same way
-                would mean desktop users - most users - never see it at all. */}
-            <Tooltip title="Beamlynx is supported by Grephyte ApS">
-              <Typography
-                component="a"
-                href="https://beamlynx.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="caption"
-                color="gray"
-                sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-              >
-                Grephyte ApS
-              </Typography>
-            </Tooltip>
             {UserContent}
             <NotificationBell hasUnreadUpdates={hasUnreadUpdates} onClick={handleOpenChangelog} />
           </Box>
