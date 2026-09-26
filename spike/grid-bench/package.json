@@ -1,0 +1,34 @@
+{
+  "name": "grid-bench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "bench": "node bench/run.mjs"
+  },
+  "dependencies": {
+    "@emotion/react": "11.11.4",
+    "@emotion/styled": "11.11.5",
+    "@glideapps/glide-data-grid": "6.0.3",
+    "@mui/material": "6.0.2",
+    "@mui/x-data-grid": "7.29.13",
+    "@tanstack/react-virtual": "3.14.13",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
+    "lodash": "^4.17.21",
+    "marked": "^4.3.0",
+    "mobx": "6.13.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-responsive-carousel": "^3.2.23"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright-core": "1.56.0",
+    "typescript": "^5.6.0",
+    "vite": "5.4.21"
+  }
+}
