@@ -10,9 +10,12 @@ import {
   type EditableGridCell,
   type Theme,
 } from '@glideapps/glide-data-grid';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
+import type { ProvideEditorCallback, TextCell } from '@glideapps/glide-data-grid';
 import { cellText } from '../data';
 import type { GridProps } from './types';
+
+const RESCALE = new URLSearchParams(location.search).get('rescale') === '1';
 
 function cssVar(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -68,6 +71,45 @@ export default function GlideGrid(p: GridProps) {
     [p.columns, p.rows, p.jsonFields],
   );
 
+  // The app's editor is an input plus an "Inspect update" button that opens
+  // the update dialog instead of committing. Glide hands a custom editor only
+  // the cell's value, so which cell is being edited is recorded when Glide
+  // activates it.
+  const current = useRef<Item | null>(null);
+  const latest = useRef(p);
+  latest.current = p;
+  const provideEditor = useCallback<ProvideEditorCallback<GridCell>>(cell => {
+    if (cell.kind !== GridCellKind.Text) return undefined;
+    const Editor = (props: { value: GridCell; onChange: (v: GridCell) => void; onFinishedEditing: (v?: GridCell) => void }) => {
+      const value = props.value as TextCell;
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 220 }}>
+          <input
+            autoFocus
+            value={value.data}
+            onChange={e => props.onChange({ ...value, data: e.target.value })}
+            onKeyDown={e => {
+              if (e.key === 'Enter') props.onFinishedEditing(value);
+              if (e.key === 'Escape') props.onFinishedEditing(undefined);
+            }}
+            style={{ flex: 1, font: 'inherit', color: 'inherit', background: 'transparent', border: 'none', outline: 'none' }}
+          />
+          <button
+            data-inspect
+            onClick={() => {
+              const at = current.current;
+              if (at) latest.current.onInspect?.(at[1], latest.current.columns[at[0]].field, value.data);
+              props.onFinishedEditing(undefined);
+            }}
+          >
+            Inspect
+          </button>
+        </div>
+      );
+    };
+    return Object.assign(Editor, { disablePadding: false });
+  }, []);
+
   return (
     <div
       style={{ position: 'absolute', inset: 0, border: '1px solid var(--canvas-node-border)', borderRadius: 3, overflow: 'hidden' }}
@@ -83,6 +125,17 @@ export default function GlideGrid(p: GridProps) {
         headerHeight={40}
         smoothScrollX
         smoothScrollY
+        provideEditor={provideEditor}
+        // rescale=1: draw at 1x while scrolling. Glide names the flag after
+        // the browser it was written for, but it is a plain switch - the
+        // lever for a machine with no GPU (see the bench's software runs).
+        experimental={RESCALE ? { enableFirefoxRescaling: true } : undefined}
+        // Not onGridSelectionChange: passing that without also controlling
+        // gridSelection makes Glide hand selection to us and stop tracking
+        // it, which silently disables editing.
+        onCellActivated={(cell: Item) => {
+          current.current = cell;
+        }}
         onColumnResize={(col, width) => p.onWidthChange(col.id!, width)}
         onCellEdited={([col, row]: Item, value: EditableGridCell) => {
           if (value.kind === GridCellKind.Text) p.onCommitEdit(row, p.columns[col].field, value.data);

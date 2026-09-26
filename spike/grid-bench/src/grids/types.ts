@@ -12,6 +12,8 @@ export interface GridProps {
   onJsonOpen: (rowIndex: number, field: string) => void;
   onCommitEdit: (rowIndex: number, field: string, value: string) => void;
   onCellContextMenu: (rowIndex: number, field: string, x: number, y: number) => void;
+  /** The editor's Inspect button: open the update dialog for the value being typed, instead of committing it. */
+  onInspect?: (rowIndex: number, field: string, value: string) => void;
 }
 
 /** The element that scrolls vertically, for the bench's scroll scenario. */

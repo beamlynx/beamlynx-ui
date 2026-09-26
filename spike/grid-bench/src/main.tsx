@@ -109,6 +109,7 @@ function App() {
               onJsonOpen={(r, f) => log(`json ${r} ${f}`)}
               onCommitEdit={(r, f, v) => log(`edit ${r} ${f} ${v}`)}
               onCellContextMenu={(r, f) => log(`menu ${r} ${f}`)}
+              onInspect={(r, f, v) => log(`inspect ${r} ${f} ${v}`)}
             />
           )}
         </div>

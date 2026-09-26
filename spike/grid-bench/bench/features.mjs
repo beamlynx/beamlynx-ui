@@ -44,6 +44,18 @@ for (const lib of libs) {
   await page.waitForTimeout(300);
   r.edit = await lastLog();
 
+  // 1b. the editor's Inspect button (glide only: the custom editor under test).
+  if (lib === 'glide') {
+    await page.mouse.dblclick(colX(4), rowY(2));
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('inspect me');
+    await page.waitForTimeout(200);
+    await page.click('[data-inspect]');
+    await page.waitForTimeout(300);
+    r.inspect = await lastLog();
+  }
+
   // 2. JSON column (field 9) opens the inspector on a single click.
   await page.mouse.click(colX(9), rowY(4));
   await page.waitForTimeout(200);

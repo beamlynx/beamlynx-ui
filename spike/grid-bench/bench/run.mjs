@@ -36,6 +36,8 @@ const CONFIGS = args.libs ? ALL_CONFIGS.filter(c => String(args.libs).split(',')
 const ROW_COUNTS = QUICK ? [1000] : (args.rows ? String(args.rows).split(',').map(Number) : [100, 1000, 10000, 100000]);
 const COLS = Number(args.cols ?? 20);
 const RESIZE_CYCLES = 3;
+const DPR = Number(args.dpr ?? 1);
+const VW = Number(args.width ?? 1600), VH = Number(args.height ?? 900);
 
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
   cwd: path.dirname(new URL(import.meta.url).pathname) + '/..',
@@ -46,7 +48,13 @@ await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({
   executablePath: EXE,
   headless: true,
-  args: ['--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
+  // --gpu: real GPU canvas and raster via ANGLE/EGL. Without it, headless
+  // Chromium uses SwiftShader: software canvas on the (throttled) main
+  // thread, which the app - Electron, with a GPU - never does.
+  args: [
+    ...(args.gpu ? ['--enable-gpu', '--use-gl=angle', '--use-angle=gl-egl', '--ignore-gpu-blocklist'] : []),
+    '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+  ],
 });
 
 const raw = [];
@@ -54,9 +62,9 @@ try {
   for (const rows of ROW_COUNTS) {
     for (const cfg of CONFIGS) {
       for (let run = 0; run < RUNS; run++) {
-        const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+        const page = await browser.newPage({ viewport: { width: VW, height: VH }, deviceScaleFactor: DPR });
         const cdp = await page.context().newCDPSession(page);
-        const url = `http://localhost:${PORT}/?lib=${cfg.lib}&rows=${rows}&cols=${COLS}&freeze=${cfg.freeze}`;
+        const url = `http://localhost:${PORT}/?lib=${cfg.lib}&rows=${rows}&cols=${COLS}&freeze=${cfg.freeze}${args.rescale ? '&rescale=1' : ''}`;
         const errors = [];
         page.on('pageerror', e => errors.push(String(e)));
         await page.goto(url);
@@ -99,7 +107,7 @@ for (const r of raw.filter(r => !r.error)) {
   groups.get(k).push(r);
 }
 const lines = [
-  `CPU throttle ${THROTTLE}x, ${COLS} columns, ${RUNS} runs each. Values are median / worst across runs.`,
+  `${args.gpu ? 'GPU' : 'Software (SwiftShader)'} rendering, CPU throttle ${THROTTLE}x, viewport ${VW}x${VH} @${DPR}x, ${COLS} columns, ${RUNS} runs each. Values are median / worst across runs.`,
   `Resize = one panel open+close cycle (${RESIZE_CYCLES} cycles per run, each cycle counted).`,
   '',
   '| rows | config | mount paint ms | mount blocked ms | resize blocked ms | resize long tasks ms | resize slow frames | scroll slow frames | scroll blank frames | scroll max frame ms | swap blocked ms | DOM nodes |',

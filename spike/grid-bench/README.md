@@ -24,16 +24,23 @@ beside the grid, as the Settings panel does in the app.
 ```sh
 npm install
 npm run build
-node bench/run.mjs                 # full matrix: 100/1k/10k/100k rows, 5 runs each, 4x CPU throttle
+node bench/run.mjs --gpu           # full matrix: 100/1k/10k/100k rows, 5 runs each, 4x CPU throttle
 node bench/run.mjs --quick         # one run each at 1k rows
-node bench/run.mjs --libs=pool,glide --rows=1000,100000 --cols=60 --tag=wide
+node bench/run.mjs --gpu --libs=pool,glide --rows=10000 --cols=60 --dpr=2 --width=2560 --height=1440 --tag=wide
 node bench/features.mjs            # edit, JSON click, context menu, resize-survives-remount
 ```
 
 The bench needs a Chromium binary. It defaults to Playwright's cached
 `chromium-1243`. Set `CHROME=/path/to/chrome` to use another.
 
-Summaries land in `results/*.md`.
+Always pass `--gpu`. Without it, headless Chromium renders with SwiftShader:
+canvas and rasterization in software, on the main thread the CPU throttle
+slows. That is not how the app runs, and it makes a canvas grid look far
+worse than it is at 2×. It is still a useful worst case: a machine whose GPU
+driver Chromium blocklists falls back to the same thing.
+
+Summaries land in `results/*.md`. Files with `gpu` in the name are the GPU
+runs; the rest are software-rendered.
 
 ## What is measured
 
