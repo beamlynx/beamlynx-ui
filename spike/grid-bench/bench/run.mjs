@@ -64,7 +64,7 @@ try {
       for (let run = 0; run < RUNS; run++) {
         const page = await browser.newPage({ viewport: { width: VW, height: VH }, deviceScaleFactor: DPR });
         const cdp = await page.context().newCDPSession(page);
-        const url = `http://localhost:${PORT}/?lib=${cfg.lib}&rows=${rows}&cols=${COLS}&freeze=${cfg.freeze}${args.rescale ? '&rescale=1' : ''}`;
+        const url = `http://localhost:${PORT}/?lib=${cfg.lib}&rows=${rows}&cols=${COLS}&freeze=${cfg.freeze}${args.rescale ? '&rescale=1' : ''}${args.smooth === '0' ? '&smooth=0' : ''}`;
         const errors = [];
         page.on('pageerror', e => errors.push(String(e)));
         await page.goto(url);

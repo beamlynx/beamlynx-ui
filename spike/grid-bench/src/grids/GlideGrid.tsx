@@ -15,6 +15,7 @@ import type { ProvideEditorCallback, TextCell } from '@glideapps/glide-data-grid
 import { cellText } from '../data';
 import type { GridProps } from './types';
 
+const SMOOTH = new URLSearchParams(location.search).get('smooth') !== '0';
 const RESCALE = new URLSearchParams(location.search).get('rescale') === '1';
 
 function cssVar(name: string) {
@@ -123,8 +124,8 @@ export default function GlideGrid(p: GridProps) {
         getCellContent={getCellContent}
         rowHeight={36}
         headerHeight={40}
-        smoothScrollX
-        smoothScrollY
+        smoothScrollX={SMOOTH}
+        smoothScrollY={SMOOTH}
         provideEditor={provideEditor}
         // rescale=1: draw at 1x while scrolling. Glide names the flag after
         // the browser it was written for, but it is a plain switch - the
