@@ -238,16 +238,22 @@ await page.waitForTimeout(400);
   const dismiss = async () => { await page.locator('[aria-label="Dismiss"]').first().click().catch(() => {}); await page.waitForTimeout(300); };
   await dismiss();
 
-  // A successful edit names what changed.
+  // A successful save says so in the cell: it glows, then settles. No
+  // snackbar. Compared against the same column one row down, away from the
+  // row-hover highlight (the pointer is moved off the grid first).
+  const bgAt = async (x, y) => (await page.screenshot({ clip: { x: x - 30, y: y - 12, width: 4, height: 4 } })).toString('base64');
   await page.mouse.dblclick(colX(3), rowY(2));
   await page.waitForTimeout(500);
   await page.keyboard.press('Control+A');
   await page.keyboard.type('noted');
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(1500);
+  await page.mouse.move(5, 500);
+  await page.waitForTimeout(450);
+  const glowing = (await bgAt(colX(3), rowY(2))) !== (await bgAt(colX(3), rowY(3)));
   let t = await noticeText();
-  check('a saved edit says what it updated', /Updated activity\.created_at for id \d+/.test(t), t);
-  await dismiss();
+  await page.waitForTimeout(2200);
+  const settled = (await bgAt(colX(3), rowY(2))) === (await bgAt(colX(3), rowY(3)));
+  check('a saved edit glows in its cell, settles, and says "Saved <column>"', glowing && settled && /^Saved created_at$/.test(t), `glowing=${glowing} settled=${settled} notice=${JSON.stringify(t)}`);
 
   // A refused one says why.
   await page.mouse.dblclick(colX(3), rowY(4));
@@ -257,7 +263,7 @@ await page.waitForTimeout(400);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1500);
   t = await noticeText();
-  check('a failed edit says why', /Couldn't update activity\.created_at .*value too long/.test(t), t);
+  check('a failed edit says why, briefly', /^Couldn't save created_at: value too long/.test(t), t);
   await dismiss();
 
   // A table with no id in the result: no editor, the reason at once.
