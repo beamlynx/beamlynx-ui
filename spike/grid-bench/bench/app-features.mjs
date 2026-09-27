@@ -232,6 +232,64 @@ await page.waitForTimeout(400);
   check('Delete, cut and paste send no update', updatesAfter === updatesBefore, `${updatesAfter - updatesBefore} update(s) sent`);
 }
 
+// 13-16. What an edit says, and what refusing one says.
+{
+  const noticeText = async () => (await page.locator('[role="status"], [role="alert"]').filter({ hasText: /./ }).allInnerTexts()).join(' | ');
+  const dismiss = async () => { await page.locator('[aria-label="Dismiss"]').first().click().catch(() => {}); await page.waitForTimeout(300); };
+  await dismiss();
+
+  // A successful edit names what changed.
+  await page.mouse.dblclick(colX(3), rowY(2));
+  await page.waitForTimeout(500);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('noted');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1500);
+  let t = await noticeText();
+  check('a saved edit says what it updated', /Updated activity\.created_at for id \d+/.test(t), t);
+  await dismiss();
+
+  // A refused one says why.
+  await page.mouse.dblclick(colX(3), rowY(4));
+  await page.waitForTimeout(500);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('FAIL');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(1500);
+  t = await noticeText();
+  check('a failed edit says why', /Couldn't update activity\.created_at .*value too long/.test(t), t);
+  await dismiss();
+
+  // A table with no id in the result: no editor, the reason at once.
+  const before = app.requests.filter(r => r.path === 'eval' && JSON.stringify(r.body).includes('update!')).length;
+  await page.mouse.dblclick(colX(6), rowY(3));
+  await page.waitForTimeout(700);
+  t = await noticeText();
+  const editorOpen = await page.locator('[data-results-cell-editor]').count();
+  check('no id in the result: the reason, no editor', /user values can't be edited/.test(t) && editorOpen === 0, `${t} (editor open: ${editorOpen})`);
+  await dismiss();
+  // Typing on it says the same.
+  await page.mouse.click(colX(6), rowY(3));
+  await page.waitForTimeout(300);
+  await page.keyboard.type('x');
+  await page.waitForTimeout(500);
+  t = await noticeText();
+  check('typing on it says the same', /user values can't be edited/.test(t), t);
+  await page.keyboard.press('Escape');
+  await dismiss();
+
+  // The id itself (visible unless hidden-ids).
+  if (!HIDDEN) {
+    await page.mouse.dblclick(colX(0), rowY(3));
+    await page.waitForTimeout(700);
+    t = await noticeText();
+    check("the id column: the reason, no editor", /activity\.id can't be edited/.test(t) && (await page.locator('[data-results-cell-editor]').count()) === 0, t);
+    await dismiss();
+  }
+  const after = app.requests.filter(r => r.path === 'eval' && JSON.stringify(r.body).includes('update!')).length;
+  check('refused edits send no update', after === before, `${after - before} sent`);
+}
+
 // Helpers for the settings-driven checks below.
 const openAppearance = async () => {
   await page.locator('button[aria-label="Settings"]:visible').first().click();

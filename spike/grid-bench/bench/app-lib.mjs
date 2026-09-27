@@ -99,6 +99,10 @@ export function startApp({ out, rows, cols, hiddenIds = false }) {
         return json({ 'connection-id': 'bench', version: '0.46.0', ast: { ...AST, prettified: sent }, query: 'SELECT 1', doc: null });
       }
       // The same data for every run, so a check can compute what is on screen.
+      // An update that sets the value FAIL is refused, as a database would.
+      if (p === 'eval' && JSON.stringify(route.request().postDataJSON()).includes("= 'FAIL'")) {
+        return json({ 'connection-id': 'bench', version: '0.46.0', error: 'value too long for type character varying(4)' });
+      }
       if (p === 'eval') { lastEvalBody = evalResponse(ROWS, 1); return json(lastEvalBody); }
       return json({ result: null });
     });
