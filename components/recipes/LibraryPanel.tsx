@@ -41,25 +41,29 @@ const LibraryPanel = observer(() => {
   const [used, setUsed] = useState<{ id: string; tab: string } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const loadSeq = useRef(0);
+  // Whether a list is on screen, for a quiet refresh that fails.
+  const shown = useRef(false);
 
   const load = useCallback((quiet: boolean) => {
     const api = window.beamlynxDesktop?.recipes;
     if (!api) return;
     const seq = ++loadSeq.current;
     if (!quiet) {
+      shown.current = false;
       setRecipes(null);
       setLoadError('');
     }
     api.list().then(
       list => {
         if (seq !== loadSeq.current) return;
+        shown.current = true;
         setRecipes(list);
         setLoadError('');
       },
       e => {
         if (seq !== loadSeq.current) return;
-        // A quiet refresh that fails keeps the list already shown.
-        if (quiet) return;
+        // A quiet refresh that fails keeps the list already shown, if any.
+        if (quiet && shown.current) return;
         setLoadError(e instanceof Error ? e.message : String(e?.message ?? e));
       },
     );
@@ -138,8 +142,19 @@ const LibraryPanel = observer(() => {
     }
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+  // Up and Down move the selection and Enter uses it, as in Ctrl+O's picker.
+  // Listened for on the document, like Settings' keys
+  // (useSettingsKeybindings): opening Library focuses the docked panel's
+  // root (SettingsDockedPanel), which sits above this component, so a
+  // handler on this component's own box would never see those keys. Only
+  // keys from inside the Library panel, or from nowhere in particular,
+  // count: a dialog on top (the Ctrl+O picker) or the editor keeps its own.
+  const onKey = useRef<(e: KeyboardEvent) => void>(() => undefined);
+  onKey.current = (e: KeyboardEvent) => {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!global.showLibrary || global.activeKeyboardPanel !== 'library') return;
+    const target = e.target instanceof HTMLElement ? e.target : null;
+    if (target && target !== document.body && !target.closest('[data-keyboard-panel="library"]')) return;
     if (!matches.length) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -147,11 +162,20 @@ const LibraryPanel = observer(() => {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       select(matches[Math.max(0, selectedIndex - 1)]);
-    } else if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+    } else if (e.key === 'Enter') {
+      // Use, delete, Try again and Clear search keep Enter as a click. A
+      // row's own button doesn't: Enter there uses the selected recipe,
+      // which Up and Down may have moved away from the focused row.
+      if (target?.tagName === 'BUTTON' && !target.hasAttribute('data-recipe-select')) return;
       e.preventDefault();
       use(selected);
     }
   };
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => onKey.current(e);
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   // Same frozen text scale as Settings (SettingsPanelContent), whose slot this is.
   const theme = useMemo(
@@ -239,6 +263,7 @@ const LibraryPanel = observer(() => {
                 <Box
                   component="button"
                   type="button"
+                  data-recipe-select
                   aria-expanded={isSelected}
                   onClick={() => select(r)}
                   sx={{
@@ -411,7 +436,6 @@ const LibraryPanel = observer(() => {
   return (
     <ThemeProvider theme={theme}>
       <Box
-        onKeyDown={onKeyDown}
         sx={{
           position: 'relative',
           height: '100%',
